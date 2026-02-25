@@ -170,6 +170,33 @@ function HoldingCard({ holding }: { holding: HoldingWithPrice }) {
   );
 }
 
+// 서비스워커의 현재 구독과 localStorage 구독을 비교해서 다르면 DB 자동 업데이트
+async function syncSubscriptionIfChanged(storedEndpoint: string): Promise<string> {
+  try {
+    const reg = await navigator.serviceWorker.getRegistration('/sw.js');
+    if (!reg) return storedEndpoint;
+
+    const currentSub = await reg.pushManager.getSubscription();
+    if (!currentSub) return storedEndpoint;
+
+    const currentJson = JSON.parse(JSON.stringify(currentSub));
+    const currentEndpoint: string = currentJson.endpoint;
+
+    if (currentEndpoint !== storedEndpoint) {
+      await fetch('/api/holdings/subscription', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ old_endpoint: storedEndpoint, new_subscription: currentJson }),
+      });
+      localStorage.setItem('pushSubscription', JSON.stringify(currentJson));
+      return currentEndpoint;
+    }
+  } catch {
+    // 실패 시 기존 endpoint 유지
+  }
+  return storedEndpoint;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [holdings, setHoldings] = useState<HoldingWithPrice[]>([]);
@@ -184,8 +211,9 @@ export default function DashboardPage() {
         return;
       }
 
-      const sub = JSON.parse(subStr);
-      const endpoint: string = sub.endpoint;
+      const stored = JSON.parse(subStr);
+      // 구독이 변경됐으면 DB 업데이트 후 새 endpoint 반환
+      const endpoint: string = await syncSubscriptionIfChanged(stored.endpoint);
 
       if (showRefreshing) setRefreshing(true);
       else setLoading(true);

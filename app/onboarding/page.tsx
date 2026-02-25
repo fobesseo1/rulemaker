@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -9,13 +9,6 @@ import { BellRing, Shield, TrendingDown } from 'lucide-react';
 export default function OnboardingPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const existing = localStorage.getItem('pushSubscription');
-    if (existing) {
-      router.replace('/');
-    }
-  }, [router]);
 
   async function handleSetup() {
     setLoading(true);
