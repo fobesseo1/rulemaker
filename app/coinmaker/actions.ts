@@ -21,3 +21,20 @@ export async function createCollection(formData: FormData) {
     revalidatePath('/coinmaker');
     return { data };
 }
+
+export async function updateAllowedUrls(formData: FormData) {
+    const allowed_urls = formData.get('allowed_urls') as string;
+
+    const { error } = await supabaseAdmin
+        .from('system_settings')
+        .update({ allowed_urls })
+        .eq('id', 1);
+
+    if (error) {
+        console.error('Error updating allowed urls:', error);
+        return { error: error.message };
+    }
+
+    revalidatePath('/coinmaker');
+    return { success: true };
+}

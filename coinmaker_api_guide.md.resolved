@@ -1,10 +1,8 @@
-# CoinMaker 연동 API 사용 가이드
-
-본 문서는 외부 애플리케이션(게임, 웹 서비스 등)에서 CoinMaker 서버(`https://www.coinmaker.com`)의 API를 호출하여 "조합된 코인(캐릭터/아이템 등) 확률형 정보"를 생성하고 수신하는 방법을 안내합니다.
+본 문서는 외부 애플리케이션(게임, 웹 서비스 등)에서 CoinMaker 서버(`https://rulemaker.vercel.app`)의 API를 호출하여 "조합된 코인(캐릭터/아이템 등) 확률형 정보"를 생성하고 수신하는 방법을 안내합니다.
 
 ## 1. API 엔드포인트
 
-*   **URL:** `https://www.coinmaker.com/api/generate-coin`
+*   **URL:** `https://rulemaker.vercel.app/api/generate-coin`
 *   **Method:** [POST](file:///c:/Users/hjdh4/Desktop/rulemaker/app/api/generate-coin/route.ts#5-95)
 *   **Content-Type:** `application/json`
 
@@ -21,10 +19,14 @@
 | `userId` | `string` | **O** | 코인을 생성하는 유저의 고유 식별자<br>(예: `user_12345`, 게임 내 캐릭터 ID 고유값 등) |
 | `collectionId` | `string` | **O** | 생성할 컬렉션 프로젝트의 고유 식별자(UUID) |
 
+### ⚠️ 요청 도메인 (CORS & Origin Validation) 제약
+*   코인 컬렉션을 관리자 콘솔에서 생성/수정할 때 **[허가된 URL]** 리스트에 등록한 도메인(`origin` 또는 `referer`)을 통해서만 API 호출이 허용됩니다.
+*   예: `http://localhost:3000` 등 지정된 URL 외에서 API를 호출할 경우 `403 Forbidden` 상태 코드가 반환됩니다.
+
 ### 요청 예시 (cURL)
 
 ```bash
-curl -X POST https://www.coinmaker.com/api/generate-coin \
+curl -X POST https://rulemaker.vercel.app/api/generate-coin \
 -H "Content-Type: application/json" \
 -d '{
   "userId": "player_8910",
@@ -36,7 +38,7 @@ curl -X POST https://www.coinmaker.com/api/generate-coin \
 
 ```javascript
 async function generateCoin() {
-  const response = await fetch('https://www.coinmaker.com/api/generate-coin', {
+  const response = await fetch('https://rulemaker.vercel.app/api/generate-coin', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

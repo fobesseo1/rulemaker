@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import Link from 'next/link';
 import { createCollection } from './actions';
+import GlobalSettingsForm from './GlobalSettingsForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +13,16 @@ export default async function CoinMakerPage() {
 
     if (error) {
         console.error('컬렉션 조회 에러:', error);
+    }
+
+    const { data: settings, error: settingsError } = await supabaseAdmin
+        .from('system_settings')
+        .select('allowed_urls')
+        .eq('id', 1)
+        .single();
+
+    if (settingsError) {
+        console.error('시스템 설정 조회 에러:', settingsError);
     }
 
     return (
@@ -45,6 +56,13 @@ export default async function CoinMakerPage() {
                         프로젝트 추가
                     </button>
                 </form>
+            </div>
+
+            {/* 전역 API 허가된 URL 설정 카드 */}
+            <div className="bg-card text-card-foreground p-6 rounded-xl border shadow-sm">
+                <h2 className="text-xl font-semibold mb-4">전역 API 접근 허가 URL 설정</h2>
+                <p className="text-sm text-muted-foreground mb-4">모든 컬렉션의 API 호출에 공통으로 적용될 허가된 Origin 단위(URL)를 입력하세요. 여러 개일 경우 쉼표(,)로 구분될 내부 문자열을 각 행에 입력합니다.</p>
+                <GlobalSettingsForm initialUrls={settings?.allowed_urls || ''} />
             </div>
 
             {/* 컬렉션 목록 갤러리 */}

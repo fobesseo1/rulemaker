@@ -29,6 +29,34 @@ export async function POST(req: Request) {
             return NextResponse.json({ success: false, error: 'Collection not found' }, { status: 404 });
         }
 
+        // --- 전역 허가된 URL(Origin) 검증 로직 ---
+        const origin = req.headers.get('origin') || req.headers.get('referer');
+
+        const { data: settings } = await supabaseAdmin
+            .from('system_settings')
+            .select('allowed_urls')
+            .eq('id', 1)
+            .single();
+
+        const allowedOriginsStr = settings?.allowed_urls;
+
+        if (allowedOriginsStr) {
+            if (!origin) {
+                return NextResponse.json({ success: false, error: 'Origin header is missing but required by security policy' }, { status: 403 });
+            }
+
+            const allowedList = allowedOriginsStr.split(',').map((url: string) => url.trim()).filter(Boolean);
+
+            if (allowedList.length > 0) {
+                const isAllowed = allowedList.some((allowedUrl: string) => origin.startsWith(allowedUrl));
+
+                if (!isAllowed) {
+                    return NextResponse.json({ success: false, error: `Origin ${origin} is not allowed` }, { status: 403 });
+                }
+            }
+        }
+        // ----------------------------------------
+
         // 2. 난수 시드 및 해시 생성
         const timestamp = Date.now();
         const seed = generateSeed(userId, timestamp, collectionId);
