@@ -2,13 +2,23 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { generateSeed, generateSha256 } from '@/lib/hash';
 
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+export async function OPTIONS() {
+    return NextResponse.json({}, { headers: corsHeaders });
+}
+
 export async function POST(req: Request) {
     try {
         const body = await req.json();
         const { userId, collectionId } = body;
 
         if (!userId || !collectionId) {
-            return NextResponse.json({ success: false, error: 'userId and collectionId are required' }, { status: 400 });
+            return NextResponse.json({ success: false, error: 'userId and collectionId are required' }, { status: 400, headers: corsHeaders });
         }
 
         // 1. 컬렉션 및 파츠 메타데이터 로드
@@ -26,7 +36,7 @@ export async function POST(req: Request) {
             .single();
 
         if (collErr || !collection) {
-            return NextResponse.json({ success: false, error: 'Collection not found' }, { status: 404 });
+            return NextResponse.json({ success: false, error: 'Collection not found' }, { status: 404, headers: corsHeaders });
         }
 
         // --- 전역 허가된 URL(Origin) 검증 로직 ---
@@ -42,7 +52,7 @@ export async function POST(req: Request) {
 
         if (allowedOriginsStr) {
             if (!origin) {
-                return NextResponse.json({ success: false, error: 'Origin header is missing but required by security policy' }, { status: 403 });
+                return NextResponse.json({ success: false, error: 'Origin header is missing but required by security policy' }, { status: 403, headers: corsHeaders });
             }
 
             const allowedList = allowedOriginsStr.split(',').map((url: string) => url.trim()).filter(Boolean);
@@ -51,7 +61,7 @@ export async function POST(req: Request) {
                 const isAllowed = allowedList.some((allowedUrl: string) => origin.startsWith(allowedUrl));
 
                 if (!isAllowed) {
-                    return NextResponse.json({ success: false, error: `Origin ${origin} is not allowed` }, { status: 403 });
+                    return NextResponse.json({ success: false, error: `Origin ${origin} is not allowed` }, { status: 403, headers: corsHeaders });
                 }
             }
         }
@@ -113,10 +123,10 @@ export async function POST(req: Request) {
             coinHash,
             collectionName: collection.name,
             traits
-        });
+        }, { headers: corsHeaders });
 
     } catch (error: any) {
         console.error('generate-coin API Error:', error);
-        return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500, headers: corsHeaders });
     }
 }
