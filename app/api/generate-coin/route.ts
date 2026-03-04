@@ -128,6 +128,7 @@ export async function POST(req: Request) {
                 user_id: userId,
                 coin_hash: coinHash,
                 origin_url: isAllowedOrigin,
+                api_url: req.url, // 이 요청을 처리한 실제 엔드포인트 URL 저장
                 traits: traits
             });
 
