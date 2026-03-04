@@ -34,7 +34,8 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className={`${geistSans.variable} antialiased`}>
-        <div className="max-w-107.5 mx-auto min-h-screen bg-background">
+        <div className="mx-auto min-h-screen bg-background">
+          {/* <div className="max-w-107.5 mx-auto min-h-screen bg-background"> */}
           {children}
         </div>
         <Toaster />
