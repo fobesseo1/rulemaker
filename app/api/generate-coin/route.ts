@@ -117,7 +117,26 @@ export async function POST(req: Request) {
             });
         }
 
-        // 4. PRD 요구스펙에 맞춘 JSON 반환
+        const isAllowedOrigin = origin ? origin : 'unknown';
+
+        // 4. 생성된 코인 정보를 DB에 저장 (generated_coins)
+        const { error: insertErr } = await supabaseAdmin
+            .from('generated_coins')
+            .insert({
+                collection_id: collectionId,
+                collection_name: collection.name,
+                user_id: userId,
+                coin_hash: coinHash,
+                origin_url: isAllowedOrigin,
+                traits: traits
+            });
+
+        if (insertErr) {
+            console.error('Failed to save generated coin to DB:', insertErr);
+            // 에러가 나더라도 가상화폐 생성 결과 자체는 반환해주는 방향으로 갈지 결정 (여기선 일단 로그만 찍고 진행)
+        }
+
+        // 5. PRD 요구스펙에 맞춘 JSON 반환
         return NextResponse.json({
             success: true,
             coinHash,
