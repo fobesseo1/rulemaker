@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ChevronLeft, Trash2 } from 'lucide-react';
+import { ChevronLeft, Trash2, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import {
   Dialog,
@@ -16,7 +17,15 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import type { Holding, PriceData } from '@/lib/types';
+import type { BuyReasonCategory, Holding, PriceData } from '@/lib/types';
+
+const TRAILING_OPTIONS = [10, 15, 20] as const;
+const CATEGORY_OPTIONS: BuyReasonCategory[] = [
+  '실적호조',
+  '테마모멘텀',
+  '수출증가',
+  '기타',
+];
 
 function formatKRW(n: number) {
   return n.toLocaleString('ko-KR') + '원';
@@ -44,6 +53,15 @@ export default function HoldingDetailPage() {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editBuyPrice, setEditBuyPrice] = useState('');
+  const [editQuantity, setEditQuantity] = useState('');
+  const [editTrailingPct, setEditTrailingPct] = useState<number>(10);
+  const [editCustomTrailing, setEditCustomTrailing] = useState('');
+  const [editCategory, setEditCategory] = useState<BuyReasonCategory>('실적호조');
+  const [editMemo, setEditMemo] = useState('');
 
   useEffect(() => {
     const subStr = localStorage.getItem('pushSubscription');
@@ -77,6 +95,62 @@ export default function HoldingDetailPage() {
 
     load();
   }, [id, router]);
+
+  function openEdit() {
+    if (!holding) return;
+    setEditBuyPrice(String(holding.buy_price));
+    setEditQuantity(holding.quantity != null ? String(holding.quantity) : '');
+    setEditTrailingPct(holding.trailing_pct);
+    setEditCustomTrailing(
+      (TRAILING_OPTIONS as readonly number[]).includes(holding.trailing_pct)
+        ? ''
+        : String(holding.trailing_pct)
+    );
+    setEditCategory((holding.buy_reason_category as BuyReasonCategory) || '실적호조');
+    setEditMemo(holding.buy_reason_memo || '');
+    setEditOpen(true);
+  }
+
+  async function handleSave() {
+    if (!holding) return;
+    if (!editBuyPrice || Number(editBuyPrice) <= 0) {
+      toast.error('매입가를 올바르게 입력해주세요');
+      return;
+    }
+    if (!(editTrailingPct > 0 && editTrailingPct < 100)) {
+      toast.error('추적 비율은 0~100% 사이로 입력해주세요');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/holdings/${holding.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          buy_price: Number(editBuyPrice),
+          quantity: editQuantity ? Number(editQuantity) : null,
+          trailing_pct: editTrailingPct,
+          buy_reason_category: editCategory,
+          buy_reason_memo: editMemo || null,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error);
+      }
+
+      const updated: Holding = await res.json();
+      setHolding(updated);
+      toast.success('수정되었습니다');
+      setEditOpen(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '수정에 실패했습니다');
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function handleDelete() {
     if (!holding) return;
@@ -259,6 +333,144 @@ export default function HoldingDetailPage() {
             )}
           </div>
         )}
+
+        {/* 수정 버튼 */}
+        <Button
+          variant="outline"
+          className="w-full rounded-xl"
+          onClick={openEdit}
+        >
+          <Pencil className="w-4 h-4 mr-2" />
+          종목 정보 수정
+        </Button>
+
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <DialogContent className="rounded-2xl mx-4 w-auto max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>종목 정보 수정</DialogTitle>
+              <DialogDescription>
+                매입가, 수량, 추적 비율, 매수 이유를 수정할 수 있습니다.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-5 py-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">매입가 (원)</label>
+                <Input
+                  value={editBuyPrice}
+                  onChange={(e) => setEditBuyPrice(e.target.value.replace(/\D/g, ''))}
+                  className="rounded-xl"
+                  inputMode="numeric"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  수량 <span className="text-muted-foreground font-normal">(선택)</span>
+                </label>
+                <Input
+                  value={editQuantity}
+                  onChange={(e) => setEditQuantity(e.target.value.replace(/\D/g, ''))}
+                  className="rounded-xl"
+                  inputMode="numeric"
+                />
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-sm font-medium">추적 비율</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {TRAILING_OPTIONS.map((pct) => (
+                    <button
+                      key={pct}
+                      onClick={() => {
+                        setEditTrailingPct(pct);
+                        setEditCustomTrailing('');
+                      }}
+                      className={`rounded-xl py-3 text-sm font-medium transition-colors border ${
+                        editTrailingPct === pct && !editCustomTrailing
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-secondary/40 border-transparent hover:bg-secondary/70'
+                      }`}
+                    >
+                      -{pct}%
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="직접 입력"
+                    value={editCustomTrailing}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^\d.]/g, '');
+                      const parts = raw.split('.');
+                      const cleaned =
+                        parts.length > 2 ? `${parts[0]}.${parts.slice(1).join('')}` : raw;
+                      setEditCustomTrailing(cleaned);
+                      const num = Number(cleaned);
+                      if (cleaned && !Number.isNaN(num) && num > 0 && num < 100) {
+                        setEditTrailingPct(num);
+                      }
+                    }}
+                    className={`rounded-xl w-28 ${editCustomTrailing ? 'border-primary' : ''}`}
+                    inputMode="decimal"
+                  />
+                  <span className="text-sm text-muted-foreground">% (예: 7.5)</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  방어선 = 현재 최고가({formatKRW(holding.highest_price)}) × (1 −{' '}
+                  {editTrailingPct}%) ={' '}
+                  {Math.round(
+                    holding.highest_price * (1 - editTrailingPct / 100)
+                  ).toLocaleString('ko-KR')}
+                  원
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-sm font-medium">매수 이유</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {CATEGORY_OPTIONS.map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => setEditCategory(c)}
+                      className={`rounded-xl py-2.5 text-sm font-medium transition-colors border ${
+                        editCategory === c
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-secondary/40 border-transparent hover:bg-secondary/70'
+                      }`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+                <textarea
+                  placeholder="추가 메모 (선택)"
+                  value={editMemo}
+                  onChange={(e) => setEditMemo(e.target.value)}
+                  rows={3}
+                  className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="flex-row gap-2">
+              <Button
+                variant="outline"
+                className="flex-1 rounded-xl"
+                onClick={() => setEditOpen(false)}
+              >
+                취소
+              </Button>
+              <Button
+                className="flex-1 rounded-xl"
+                onClick={handleSave}
+                disabled={saving}
+              >
+                {saving ? '저장 중...' : '저장'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* 삭제 버튼 */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

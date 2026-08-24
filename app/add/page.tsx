@@ -26,7 +26,8 @@ export default function AddPage() {
 
   const [buyPrice, setBuyPrice] = useState('');
   const [quantity, setQuantity] = useState('');
-  const [trailingPct, setTrailingPct] = useState<10 | 15 | 20>(10);
+  const [trailingPct, setTrailingPct] = useState<number>(10);
+  const [customTrailing, setCustomTrailing] = useState('');
   const [category, setCategory] = useState<BuyReasonCategory>('실적호조');
   const [memo, setMemo] = useState('');
 
@@ -73,6 +74,10 @@ export default function AddPage() {
     }
     if (!buyPrice || Number(buyPrice) <= 0) {
       toast.error('매입가를 올바르게 입력해주세요');
+      return;
+    }
+    if (!(trailingPct > 0 && trailingPct < 100)) {
+      toast.error('추적 비율은 0~100% 사이로 입력해주세요');
       return;
     }
 
@@ -195,9 +200,12 @@ export default function AddPage() {
             {TRAILING_OPTIONS.map((pct) => (
               <button
                 key={pct}
-                onClick={() => setTrailingPct(pct)}
+                onClick={() => {
+                  setTrailingPct(pct);
+                  setCustomTrailing('');
+                }}
                 className={`rounded-xl py-3 text-sm font-medium transition-colors border ${
-                  trailingPct === pct
+                  trailingPct === pct && !customTrailing
                     ? 'bg-primary text-primary-foreground border-primary'
                     : 'bg-secondary/40 border-transparent hover:bg-secondary/70'
                 }`}
@@ -205,6 +213,28 @@ export default function AddPage() {
                 -{pct}%
               </button>
             ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="직접 입력"
+              value={customTrailing}
+              onChange={(e) => {
+                const raw = e.target.value.replace(/[^\d.]/g, '');
+                const parts = raw.split('.');
+                const cleaned =
+                  parts.length > 2 ? `${parts[0]}.${parts.slice(1).join('')}` : raw;
+                setCustomTrailing(cleaned);
+                const num = Number(cleaned);
+                if (cleaned && !Number.isNaN(num) && num > 0 && num < 100) {
+                  setTrailingPct(num);
+                }
+              }}
+              className={`rounded-xl w-28 ${
+                customTrailing ? 'border-primary' : ''
+              }`}
+              inputMode="decimal"
+            />
+            <span className="text-sm text-muted-foreground">% (예: 7.5)</span>
           </div>
           <p className="text-xs text-muted-foreground">
             방어선 = 최고가 × (1 − {trailingPct}%) ={' '}

@@ -29,14 +29,14 @@ async function getYahooPrice(symbol: string): Promise<number> {
 
 async function sendPush(
   subscription: unknown,
-  data: { title: string; body: string }
+  payload: { title: string; body: string; data?: { tag?: string; url?: string } }
 ) {
   try {
     await webpush.sendNotification(
       subscription as webpush.PushSubscription,
-      JSON.stringify(data)
+      JSON.stringify(payload)
     );
-    console.log(`✅ 알림 발송 성공: ${data.title}`);
+    console.log(`✅ 알림 발송 성공: ${payload.title}`);
   } catch (error) {
     console.error("❌ 알림 발송 실패:", error);
   }
@@ -98,6 +98,10 @@ Deno.serve(async (_req: Request) => {
         await sendPush(holding.push_subscription, {
           title: `${holding.name} 방어선 상향`,
           body: `방어선이 ${newDefenseLine.toLocaleString()}원으로 올라갔습니다 ✅`,
+          data: {
+            tag: `holding-${holding.id}-defense-up`,
+            url: `/holdings/${holding.id}`,
+          },
         });
 
         console.log(`✅ ${holding.name} 방어선 상향 → ${newDefenseLine}`);
@@ -108,6 +112,10 @@ Deno.serve(async (_req: Request) => {
         await sendPush(holding.push_subscription, {
           title: `⚠️ ${holding.name}: 원칙이 작동했습니다`,
           body: `방어선(${defenseLine.toLocaleString()}원)이 붕괴되었습니다`,
+          data: {
+            tag: `holding-${holding.id}-breach`,
+            url: `/holdings/${holding.id}`,
+          },
         });
 
         console.log(`🚨 ${holding.name} 방어선 이탈!`);

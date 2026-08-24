@@ -34,7 +34,12 @@ export async function POST(req: NextRequest) {
     push_subscription,
   } = body;
 
-  const defense_line = Math.round(Number(buy_price) * (1 - Number(trailing_pct) / 100));
+  const trailingPctNum = Number(trailing_pct);
+  if (!Number.isFinite(trailingPctNum) || trailingPctNum <= 0 || trailingPctNum >= 100) {
+    return NextResponse.json({ error: 'trailing_pct must be between 0 and 100' }, { status: 400 });
+  }
+
+  const defense_line = Math.round(Number(buy_price) * (1 - trailingPctNum / 100));
 
   const { data, error } = await supabase
     .from('holdings')
@@ -45,7 +50,7 @@ export async function POST(req: NextRequest) {
       quantity: quantity ? Number(quantity) : null,
       highest_price: Number(buy_price),
       defense_line,
-      trailing_pct: Number(trailing_pct),
+      trailing_pct: trailingPctNum,
       buy_reason_category: buy_reason_category || null,
       buy_reason_memo: buy_reason_memo || null,
       push_subscription,

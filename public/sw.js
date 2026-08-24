@@ -6,6 +6,7 @@ self.addEventListener('push', function (event) {
     icon: '/icon-192.png',
     badge: '/icon-192.png',
     vibrate: [200, 100, 200],
+    tag: data.data?.tag,
     data: data.data || {},
   });
 });
